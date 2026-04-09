@@ -274,3 +274,12 @@ body {
 ::selection {
   background: color-mix(in srgb, var(--accent) 25%, transparent);
 }
+
+/* PDF export overrides — applied to cloned content */
+@media print {
+  .prose {
+    font-size: 13px !important;
+    line-height: 1.7 !important;
+    color: #2b2b2b !important;
+  }
+}
