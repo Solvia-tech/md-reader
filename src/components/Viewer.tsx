@@ -67,7 +67,7 @@ export default function Viewer() {
         html2canvas: { scale: 2, backgroundColor: '#ffffff' },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         pagebreak: { mode: ['avoid-all', 'css'] },
-      })
+      } as Record<string, unknown>)
       .from(clone)
       .save()
 
