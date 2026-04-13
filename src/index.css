@@ -275,6 +275,34 @@ body {
   background: color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
+/* Search highlights */
+mark.md-search-hit {
+  background: #fff3a3;
+  color: #2b2b2b;
+  border-radius: 2px;
+  padding: 0 1px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+mark.md-search-hit.md-search-hit-current {
+  background: #ffb547;
+  color: #1a1a1a;
+  box-shadow: 0 0 0 2px #ffb547;
+}
+
+@media (prefers-color-scheme: dark) {
+  mark.md-search-hit {
+    background: #7a6a1f;
+    color: #fff8d6;
+  }
+  mark.md-search-hit.md-search-hit-current {
+    background: #d89b2a;
+    color: #1a1a1a;
+    box-shadow: 0 0 0 2px #d89b2a;
+  }
+}
+
 /* PDF export overrides — applied to cloned content */
 @media print {
   .prose {

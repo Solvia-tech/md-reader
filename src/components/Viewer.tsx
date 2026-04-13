@@ -2,7 +2,14 @@ import { useRef, useEffect, useCallback } from 'react'
 import { useFiles } from '../context/FileContext'
 import MarkdownRenderer from './MarkdownRenderer'
 
-export default function Viewer() {
+interface Props {
+  findText?: string
+  currentMatchIndex?: number
+  caseSensitive?: boolean
+  onMatchCountChange?: (count: number) => void
+}
+
+export default function Viewer({ findText = '', currentMatchIndex = 0, caseSensitive = false, onMatchCountChange }: Props) {
   const { files, activeFileId } = useFiles()
   const contentRef = useRef<HTMLDivElement>(null)
   const activeFile = activeFileId ? files.get(activeFileId) : null
@@ -25,6 +32,13 @@ export default function Viewer() {
       line-height: 1.7;
       padding: 0;
     `
+    // Remove search highlights from PDF export
+    clone.querySelectorAll('mark.md-search-hit').forEach(mark => {
+      const parent = mark.parentNode
+      if (!parent) return
+      while (mark.firstChild) parent.insertBefore(mark.firstChild, mark)
+      parent.removeChild(mark)
+    })
     // Force color on all child elements to override dark mode inherited styles
     // and apply page-break rules to avoid splitting content across pages
     clone.querySelectorAll('*').forEach((el) => {
@@ -89,7 +103,14 @@ export default function Viewer() {
         margin: '0 auto',
         padding: '80px 48px 200px 48px',
       }}>
-        <MarkdownRenderer ref={contentRef} content={activeFile.content} />
+        <MarkdownRenderer
+          ref={contentRef}
+          content={activeFile.content}
+          highlightTerm={findText}
+          currentMatchIndex={currentMatchIndex}
+          caseSensitive={caseSensitive}
+          onMatchCountChange={onMatchCountChange}
+        />
       </div>
     </div>
   )

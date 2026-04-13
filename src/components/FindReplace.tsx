@@ -1,17 +1,34 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { X, ChevronUp, ChevronDown, Replace, ReplaceAll } from 'lucide-react'
 import { useFiles } from '../context/FileContext'
+import Tooltip from './Tooltip'
 
 interface Props {
   onClose: () => void
+  findText: string
+  setFindText: (v: string) => void
+  replaceText: string
+  setReplaceText: (v: string) => void
+  caseSensitive: boolean
+  setCaseSensitive: (v: boolean) => void
+  currentIndex: number
+  setCurrentIndex: (v: number | ((prev: number) => number)) => void
+  matchCount: number
 }
 
-export default function FindReplace({ onClose }: Props) {
+export default function FindReplace({
+  onClose,
+  findText,
+  setFindText,
+  replaceText,
+  setReplaceText,
+  caseSensitive,
+  setCaseSensitive,
+  currentIndex,
+  setCurrentIndex,
+  matchCount,
+}: Props) {
   const { files, activeFileId, updateFileContent } = useFiles()
-  const [findText, setFindText] = useState('')
-  const [replaceText, setReplaceText] = useState('')
-  const [caseSensitive, setCaseSensitive] = useState(false)
-  const [currentIndex, setCurrentIndex] = useState(0)
   const findRef = useRef<HTMLInputElement>(null)
 
   const activeFile = activeFileId ? files.get(activeFileId) : null
@@ -22,45 +39,42 @@ export default function FindReplace({ onClose }: Props) {
     findRef.current?.select()
   }, [])
 
-  const matches = useMemo(() => {
-    if (!findText) return []
+  const goNext = useCallback(() => {
+    if (matchCount === 0) return
+    setCurrentIndex(prev => (prev + 1) % matchCount)
+  }, [matchCount, setCurrentIndex])
+
+  const goPrev = useCallback(() => {
+    if (matchCount === 0) return
+    setCurrentIndex(prev => (prev - 1 + matchCount) % matchCount)
+  }, [matchCount, setCurrentIndex])
+
+  const computeRawMatches = useCallback(() => {
+    if (!findText) return [] as { start: number; end: number }[]
     const results: { start: number; end: number }[] = []
-    const searchContent = caseSensitive ? content : content.toLowerCase()
-    const searchTerm = caseSensitive ? findText : findText.toLowerCase()
+    const haystack = caseSensitive ? content : content.toLowerCase()
+    const needle = caseSensitive ? findText : findText.toLowerCase()
     let idx = 0
-    while ((idx = searchContent.indexOf(searchTerm, idx)) !== -1) {
-      results.push({ start: idx, end: idx + searchTerm.length })
-      idx += searchTerm.length
+    while ((idx = haystack.indexOf(needle, idx)) !== -1) {
+      results.push({ start: idx, end: idx + needle.length })
+      idx += needle.length
     }
     return results
   }, [content, findText, caseSensitive])
 
-  useEffect(() => {
-    if (matches.length > 0 && currentIndex >= matches.length) {
-      setCurrentIndex(0)
-    }
-  }, [matches, currentIndex])
-
-  const goNext = useCallback(() => {
-    if (matches.length === 0) return
-    setCurrentIndex(prev => (prev + 1) % matches.length)
-  }, [matches.length])
-
-  const goPrev = useCallback(() => {
-    if (matches.length === 0) return
-    setCurrentIndex(prev => (prev - 1 + matches.length) % matches.length)
-  }, [matches.length])
-
   const replaceCurrent = useCallback(() => {
-    if (!activeFileId || matches.length === 0) return
-    const match = matches[currentIndex]
+    if (!activeFileId) return
+    const rawMatches = computeRawMatches()
+    if (rawMatches.length === 0) return
+    const safeIndex = ((currentIndex % rawMatches.length) + rawMatches.length) % rawMatches.length
+    const match = rawMatches[safeIndex]
     if (!match) return
     const newContent = content.slice(0, match.start) + replaceText + content.slice(match.end)
     updateFileContent(activeFileId, newContent)
-  }, [activeFileId, content, matches, currentIndex, replaceText, updateFileContent])
+  }, [activeFileId, content, currentIndex, replaceText, computeRawMatches, updateFileContent])
 
   const replaceAll = useCallback(() => {
-    if (!activeFileId || matches.length === 0) return
+    if (!activeFileId || !findText) return
     let newContent: string
     if (caseSensitive) {
       newContent = content.split(findText).join(replaceText)
@@ -68,7 +82,7 @@ export default function FindReplace({ onClose }: Props) {
       newContent = content.replace(new RegExp(escapeRegex(findText), 'gi'), replaceText)
     }
     updateFileContent(activeFileId, newContent)
-  }, [activeFileId, content, findText, replaceText, caseSensitive, matches.length, updateFileContent])
+  }, [activeFileId, content, findText, replaceText, caseSensitive, updateFileContent])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -122,61 +136,65 @@ export default function FindReplace({ onClose }: Props) {
             className="flex-1 text-sm bg-transparent outline-none"
             style={{ color: 'var(--text-primary)', minWidth: 0 }}
           />
-          <button
-            onClick={() => setCaseSensitive(!caseSensitive)}
-            title="Diferenciar maiúsculas/minúsculas"
-            className="cursor-pointer shrink-0"
-            style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              padding: '2px 5px',
-              borderRadius: '3px',
-              color: caseSensitive ? 'var(--accent)' : 'var(--text-secondary)',
-              background: caseSensitive ? 'var(--hover-bg)' : 'transparent',
-              border: caseSensitive ? '1px solid var(--accent)' : '1px solid transparent',
-            }}
-          >
-            Aa
-          </button>
+          <Tooltip label="Diferenciar maiúsculas/minúsculas">
+            <button
+              onClick={() => setCaseSensitive(!caseSensitive)}
+              className="cursor-pointer shrink-0"
+              style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '2px 5px',
+                borderRadius: '3px',
+                color: caseSensitive ? 'var(--accent)' : 'var(--text-secondary)',
+                background: caseSensitive ? 'var(--hover-bg)' : 'transparent',
+                border: caseSensitive ? '1px solid var(--accent)' : '1px solid transparent',
+              }}
+            >
+              Aa
+            </button>
+          </Tooltip>
         </div>
 
         <span
           className="text-xs shrink-0"
           style={{ color: 'var(--text-secondary)', minWidth: '48px', textAlign: 'center' }}
         >
-          {findText ? `${matches.length > 0 ? currentIndex + 1 : 0}/${matches.length}` : ''}
+          {findText ? `${matchCount > 0 ? currentIndex + 1 : 0}/${matchCount}` : ''}
         </span>
 
-        <button
-          onClick={goPrev}
-          className="cursor-pointer shrink-0 rounded transition-colors"
-          style={{ color: 'var(--text-secondary)', padding: '4px' }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover-bg)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          title="Anterior (Shift+Enter)"
-        >
-          <ChevronUp size={16} />
-        </button>
-        <button
-          onClick={goNext}
-          className="cursor-pointer shrink-0 rounded transition-colors"
-          style={{ color: 'var(--text-secondary)', padding: '4px' }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover-bg)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          title="Próximo (Enter)"
-        >
-          <ChevronDown size={16} />
-        </button>
-        <button
-          onClick={onClose}
-          className="cursor-pointer shrink-0 rounded transition-colors"
-          style={{ color: 'var(--text-secondary)', padding: '4px' }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover-bg)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          title="Fechar (Esc)"
-        >
-          <X size={16} />
-        </button>
+        <Tooltip label="Resultado anterior" shortcut="⇧↵">
+          <button
+            onClick={goPrev}
+            className="cursor-pointer shrink-0 rounded transition-colors"
+            style={{ color: 'var(--text-secondary)', padding: '4px' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover-bg)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <ChevronUp size={16} />
+          </button>
+        </Tooltip>
+        <Tooltip label="Próximo resultado" shortcut="↵">
+          <button
+            onClick={goNext}
+            className="cursor-pointer shrink-0 rounded transition-colors"
+            style={{ color: 'var(--text-secondary)', padding: '4px' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover-bg)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <ChevronDown size={16} />
+          </button>
+        </Tooltip>
+        <Tooltip label="Fechar busca" shortcut="Esc">
+          <button
+            onClick={onClose}
+            className="cursor-pointer shrink-0 rounded transition-colors"
+            style={{ color: 'var(--text-secondary)', padding: '4px' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover-bg)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <X size={16} />
+          </button>
+        </Tooltip>
       </div>
 
       {/* Replace row */}
@@ -201,59 +219,61 @@ export default function FindReplace({ onClose }: Props) {
           />
         </div>
 
-        <button
-          onClick={replaceCurrent}
-          disabled={matches.length === 0}
-          className="cursor-pointer shrink-0 rounded transition-colors"
-          style={{
-            color: matches.length > 0 ? 'var(--accent)' : 'var(--text-secondary)',
-            padding: '4px 8px',
-            opacity: matches.length === 0 ? 0.4 : 1,
-            fontSize: '12px',
-            fontWeight: 500,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-          }}
-          onMouseEnter={e => { if (matches.length > 0) e.currentTarget.style.background = 'var(--hover-bg)' }}
-          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          title="Substituir"
-        >
-          <Replace size={14} />
-          1
-        </button>
-        <button
-          onClick={replaceAll}
-          disabled={matches.length === 0}
-          className="cursor-pointer shrink-0 rounded transition-colors"
-          style={{
-            color: matches.length > 0 ? 'var(--accent)' : 'var(--text-secondary)',
-            padding: '4px 8px',
-            opacity: matches.length === 0 ? 0.4 : 1,
-            fontSize: '12px',
-            fontWeight: 500,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-          }}
-          onMouseEnter={e => { if (matches.length > 0) e.currentTarget.style.background = 'var(--hover-bg)' }}
-          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          title="Substituir todos"
-        >
-          <ReplaceAll size={14} />
-          {matches.length}
-        </button>
+        <Tooltip label="Substituir ocorrência atual">
+          <button
+            onClick={replaceCurrent}
+            disabled={matchCount === 0}
+            className="cursor-pointer shrink-0 rounded transition-colors"
+            style={{
+              color: matchCount > 0 ? 'var(--accent)' : 'var(--text-secondary)',
+              padding: '4px 8px',
+              opacity: matchCount === 0 ? 0.4 : 1,
+              fontSize: '12px',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+            onMouseEnter={e => { if (matchCount > 0) e.currentTarget.style.background = 'var(--hover-bg)' }}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <Replace size={14} />
+            1
+          </button>
+        </Tooltip>
+        <Tooltip label="Substituir todas as ocorrências">
+          <button
+            onClick={replaceAll}
+            disabled={matchCount === 0}
+            className="cursor-pointer shrink-0 rounded transition-colors"
+            style={{
+              color: matchCount > 0 ? 'var(--accent)' : 'var(--text-secondary)',
+              padding: '4px 8px',
+              opacity: matchCount === 0 ? 0.4 : 1,
+              fontSize: '12px',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+            onMouseEnter={e => { if (matchCount > 0) e.currentTarget.style.background = 'var(--hover-bg)' }}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <ReplaceAll size={14} />
+            {matchCount}
+          </button>
+        </Tooltip>
       </div>
 
       {/* Status */}
-      {findText && matches.length === 0 && (
+      {findText && matchCount === 0 && (
         <p className="text-xs" style={{ color: 'var(--text-secondary)', marginTop: '10px' }}>
           Nenhum resultado encontrado.
         </p>
       )}
-      {findText && matches.length > 0 && (
+      {findText && matchCount > 0 && (
         <p className="text-xs" style={{ color: 'var(--text-secondary)', marginTop: '10px' }}>
-          {matches.length} {matches.length === 1 ? 'ocorrência encontrada' : 'ocorrências encontradas'}
+          {matchCount} {matchCount === 1 ? 'ocorrência encontrada' : 'ocorrências encontradas'}
         </p>
       )}
     </div>

@@ -3,6 +3,7 @@ import { useFiles } from '../context/FileContext'
 import { useFileSystem } from '../hooks/useFileSystem'
 import SearchBar from './SearchBar'
 import FileList from './FileList'
+import Tooltip from './Tooltip'
 
 export default function Sidebar() {
   const { sidebarOpen } = useFiles()
@@ -34,20 +35,22 @@ export default function Sidebar() {
           <FileList />
 
           <div style={{ padding: '16px 24px 24px 24px', borderTop: '1px solid var(--border-color)' }}>
-            <button
-              onClick={openFolder}
-              className="w-full flex items-center justify-center gap-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer"
-              style={{
-                color: 'var(--text-secondary)',
-                background: 'transparent',
-                padding: '10px 16px',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover-bg)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            >
-              <FolderOpen size={14} />
-              Abrir Pasta
-            </button>
+            <Tooltip label="Selecionar uma pasta com arquivos Markdown">
+              <button
+                onClick={openFolder}
+                className="w-full flex items-center justify-center gap-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                style={{
+                  color: 'var(--text-secondary)',
+                  background: 'transparent',
+                  padding: '10px 16px',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover-bg)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <FolderOpen size={14} />
+                Abrir Pasta
+              </button>
+            </Tooltip>
           </div>
         </>
       )}
